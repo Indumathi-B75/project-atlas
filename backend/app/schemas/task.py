@@ -1,7 +1,14 @@
+
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 TaskStatus = Literal["pending", "in_progress", "completed"]
@@ -15,6 +22,31 @@ class TaskCreate(BaseModel):
     description: str | None = None
     status: TaskStatus = "pending"
     priority: TaskPriority = "medium"
+    due_at: datetime | None = None
+    estimated_duration_minutes: int | None = Field(
+        default=None,
+        gt=0,
+    )
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("title cannot contain only whitespace")
+        return value
+
+    @field_validator("due_at")
+    @classmethod
+    def validate_due_at(
+        cls,
+        value: datetime | None,
+    ) -> datetime | None:
+        if value is not None and (
+            value.tzinfo is None or value.utcoffset() is None
+        ):
+            raise ValueError("due_at must be timezone-aware")
+        return value
 
 
 class TaskUpdate(BaseModel):
@@ -24,6 +56,35 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
+    due_at: datetime | None = None
+    estimated_duration_minutes: int | None = Field(
+        default=None,
+        gt=0,
+    )
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        value = value.strip()
+        if not value:
+            raise ValueError("title cannot contain only whitespace")
+        return value
+
+    @field_validator("due_at")
+    @classmethod
+    def validate_due_at(
+        cls,
+        value: datetime | None,
+    ) -> datetime | None:
+        if value is not None and (
+            value.tzinfo is None or value.utcoffset() is None
+        ):
+            raise ValueError("due_at must be timezone-aware")
+        return value
+
     @model_validator(mode="after")
     def reject_null_for_required_fields(self):
         for field_name in ("title", "status", "priority"):
@@ -35,6 +96,7 @@ class TaskUpdate(BaseModel):
 
         return self
 
+
 class TaskRead(BaseModel):
     """Define the task data returned by the API."""
 
@@ -45,5 +107,7 @@ class TaskRead(BaseModel):
     description: str | None
     status: TaskStatus
     priority: TaskPriority
+    due_at: datetime | None
+    estimated_duration_minutes: int | None
     created_at: datetime
     updated_at: datetime

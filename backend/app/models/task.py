@@ -1,10 +1,15 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
-
 from app.db.base import Base
-
 
 class Task(Base):
     """Database model for a task managed by Project ATLAS."""
@@ -15,6 +20,13 @@ class Task(Base):
         Integer,
         primary_key=True,
         index=True,
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "estimated_duration_minutes IS NULL "
+            "OR estimated_duration_minutes > 0",
+            name="ck_tasks_positive_estimated_duration",
+        ),
     )
 
     title: Mapped[str] = mapped_column(
@@ -39,6 +51,15 @@ class Task(Base):
         nullable=False,
         default="medium",
         server_default="medium",
+    )
+    due_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    estimated_duration_minutes: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
